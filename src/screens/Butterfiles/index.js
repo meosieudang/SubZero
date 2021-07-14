@@ -1,68 +1,11 @@
-import React, {useEffect, useState} from 'react';
-
-import {
-  StyleSheet,
-  Text,
-  View,
-  Dimensions,
-  SafeAreaView,
-  FlatList,
-  PixelRatio,
-} from 'react-native';
+import React, {useState} from 'react';
+import Modal from 'react-native-modal';
+import {StyleSheet, Text, FlatList, Pressable} from 'react-native';
 import FastImage from 'react-native-fast-image';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useScreenDimensions} from '../../hooks/useScreenDimensions';
 
-export const HEIGHT_SCREEN = Dimensions.get('window').height;
-export const WIDTH_SCREEN = Dimensions.get('window').width;
-const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
-const widthBaseScale = SCREEN_WIDTH / 414;
-const heightBaseScale = SCREEN_HEIGHT / 896;
-function normalize(size, based = 'width') {
-  const newSize =
-    based === 'height' ? size * heightBaseScale : size * widthBaseScale;
-  return Math.round(PixelRatio.roundToNearestPixel(newSize));
-}
-//for width  pixel
-const widthPixel = size => {
-  return normalize(size, 'width');
-};
-//for height  pixel
-const heightPixel = size => {
-  return normalize(size, 'height');
-};
-//for font  pixel
-const fontPixel = size => {
-  return heightPixel(size);
-};
-//for Margin and Padding vertical pixel
-const pixelSizeVertical = size => {
-  return heightPixel(size);
-};
-//for Margin and Padding horizontal pixel
-const pixelSizeHorizontal = size => {
-  return widthPixel(size);
-};
-const useScreenDimensions = () => {
-  const [screenData, setScreenData] = useState(Dimensions.get('window'));
-  console.log(screenData);
-
-  useEffect(() => {
-    const onChange = result => {
-      setScreenData(result.screen);
-    };
-
-    Dimensions.addEventListener('change', onChange);
-
-    return () => Dimensions.removeEventListener('change', onChange);
-  });
-
-  return {
-    ...screenData,
-    isLandscape: screenData.width > screenData.height,
-  };
-};
-
-const T = [
+const DATA = [
   {
     url: 'https://vmpic2.science4you.org/images/preview/nabeat/S763257_535x535.jpg',
     name: 'Danaus chrysippus',
@@ -115,42 +58,83 @@ const T = [
 
 export const Butterflies = () => {
   const {isLandscape, width} = useScreenDimensions();
-  console.log(isLandscape, 'isLandscape');
   const insets = useSafeAreaInsets();
-  console.log(insets);
-  const renderItem = ({item, index}) => {
+  const [state, setState] = useState({visible: false, detail: null});
+
+  const pressItem = item => setState({visible: true, detail: item.name});
+
+  const renderItem = ({item}) => {
+    const widthItem = isLandscape
+      ? width / 5 - 8 - insets.bottom
+      : width / 3 - 8;
+
     return (
-      <View style={{margin: 4}}>
+      <Pressable style={{margin: 4}} onPress={() => pressItem(item)}>
         <FastImage
           source={{uri: item.url}}
           style={{
-            width: isLandscape ? width / 5 - 8 - insets.bottom : width / 3 - 8,
-            height: isLandscape ? width / 5 - 8 - insets.bottom : width / 3 - 8,
+            width: widthItem,
+            height: widthItem,
             backgroundColor: 'green',
           }}
           resizeMode={'cover'}
         />
-        <Text style={{fontSize: 10, textAlign: 'center'}} numberOfLines={2}>
+        <Text style={styles.name} numberOfLines={2}>
           {item.name}
         </Text>
-      </View>
+      </Pressable>
     );
   };
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <FlatList
         key={isLandscape ? '1' : '2'}
         numColumns={isLandscape ? 5 : 3}
-        data={T}
+        data={DATA}
         renderItem={renderItem}
         keyExtractor={(it, i) => `${i}`}
+      />
+      <ModalDetail
+        isVisible={state.visible}
+        name={state.detail}
+        onClose={() => setState({visible: false, detail: null})}
       />
     </SafeAreaView>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'white',
   },
+  name: {
+    fontSize: 10,
+    textAlign: 'center',
+  },
+  modal: {flex: 1, margin: 0, justifyContent: 'flex-end'},
+  body: {backgroundColor: 'white', flex: 0.5},
+  nameModal: {
+    margin: 16,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  nameModalWrap: {
+    margin: 16,
+    textAlign: 'left',
+    fontSize: 16,
+  },
 });
+
+const ModalDetail = ({isVisible = false, name = '', onClose}) => {
+  return (
+    <Modal isVisible={isVisible} onBackdropPress={onClose} style={styles.modal}>
+      <SafeAreaView style={styles.body} edges={['left', 'right']}>
+        <Text style={styles.nameModalWrap}>
+          {`Species:`} <Text style={styles.nameModal}>{name}</Text>
+        </Text>
+      </SafeAreaView>
+    </Modal>
+  );
+};
